@@ -1,0 +1,19 @@
+{
+  "variants":{
+    "facing=north": {
+      "model": "modoluca:block/vertical_oak_slab"
+    },
+    "facing=south": {
+      "model": "modoluca:block/vertical_oak_slab",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "modoluca:block/vertical_oak_slab",
+      "y": 270
+    },
+    "facing=east": {
+      "model": "modoluca:block/vertical_oak_slab",
+      "y": 90
+    }
+  }
+}

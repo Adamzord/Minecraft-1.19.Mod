@@ -1,0 +1,17 @@
+{
+  "item.modoluca.steel": "Steel",
+  "item.modoluca.steel_dust": "Steel Dust",
+  "item.modoluca.coffee_powder": "Coffee Powder",
+  "item.modoluca.coffee_filter": "Coffee Filter",
+  "item.modoluca.boiling_water": "Boiling Water",
+  "item.modoluca.mug": "Mug",
+  "item.modoluca.coffee_mug": "Coffee Mug",
+  "item.modoluca.liquid_mercury_bucket": "Liquid Mercury Bucket",
+
+  "block.modoluca.steel_block": "Steel Block",
+  "block.modoluca.industrial_crusher": "Industrial Crusher",
+  "block.modoluca.coffee_maker": "Coffee Maker",
+  "block.modoluca.vertical_oak_slab": "Vertical Oak Slab",
+
+  "itemGroup.modolucatab": "Mod do Luca"
+}

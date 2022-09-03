@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients":[
+    {
+      "item": "modoluca:steel_block"
+    }
+  ],
+
+  "result": {
+    "item": "modluca:steel",
+    "count": 9
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "item": "modoluca:steel"
+    }
+  },
+
+  "result": {
+    "item": "modoluca:steel_block"
+  }
+}

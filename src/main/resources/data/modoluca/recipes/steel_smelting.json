@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:smelting",
+
+  "ingredient":
+  {
+    "item": "minecraft:iron_ingot"
+  },
+
+  "result":{
+    "item": "modoluca:steel",
+    "experience": 0.2,
+    "cooking time": 250
+  }
+
+}

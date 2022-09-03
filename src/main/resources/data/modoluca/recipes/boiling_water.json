@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:smelting",
+
+  "ingredient":
+  {
+    "item": "minecraft:water_bucket"
+  },
+
+  "result":{
+    "item": "modoluca:boiling_water",
+    "experience": 0.1,
+    "cooking time": 100
+  }
+
+}

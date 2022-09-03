@@ -1,0 +1,19 @@
+{
+  "variants":{
+"facing=north": {
+"model": "modoluca:block/industrial_crusher"
+},
+"facing=south": {
+"model": "modoluca:block/industrial_crusher",
+"y": 180
+},
+"facing=west": {
+"model": "modoluca:block/industrial_crusher",
+"y": 270
+},
+"facing=east": {
+"model": "modoluca:block/industrial_crusher",
+"y": 90
+}
+}
+}

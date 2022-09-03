@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CCB",
+    "CC ",
+    "FM "
+  ],
+  "key": {
+    "C": {
+      "item": "modoluca:coffee_powder"
+    },
+    "B": {
+      "item": "modoluca:boiling_water"
+    },
+    "F": {
+      "item": "modoluca:coffee_filter"
+    },
+    "M": {
+      "item": "modoluca:mug"
+    }
+  },
+
+  "result": {
+    "item": "modoluca:coffee_mug"
+  }
+}
