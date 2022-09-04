@@ -5,6 +5,8 @@ import com.adamzord.modoluca.block.entity.ModBlockEntities;
 import com.adamzord.modoluca.fluid.ModFluidTypes;
 import com.adamzord.modoluca.fluid.ModFluids;
 import com.adamzord.modoluca.item.ModItems;
+import com.adamzord.modoluca.networking.ModMessages;
+import com.adamzord.modoluca.recipes.ModRecipes;
 import com.adamzord.modoluca.screen.IndustrialCrusherScreen;
 import com.adamzord.modoluca.screen.ModMenuTypes;
 import com.mojang.logging.LogUtils;
@@ -42,6 +44,8 @@ public class ModoLuca
 
         ModMenuTypes.register(modEventBus);
 
+        ModRecipes.register(modEventBus);
+
         modEventBus.addListener(this::commonSetup);
 
         // Register ourselves for server and other game events we are interested in
@@ -50,7 +54,7 @@ public class ModoLuca
 
     private void commonSetup(final FMLCommonSetupEvent event)
     {
-
+        ModMessages.register();
     }
 
 

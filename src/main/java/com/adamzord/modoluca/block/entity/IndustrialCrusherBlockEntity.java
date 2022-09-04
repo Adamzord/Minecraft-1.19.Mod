@@ -1,7 +1,12 @@
 package com.adamzord.modoluca.block.entity;
 
+import com.adamzord.modoluca.block.custom.IndustrialCrusherBlock;
 import com.adamzord.modoluca.item.ModItems;
+import com.adamzord.modoluca.networking.ModMessages;
+import com.adamzord.modoluca.networking.packet.EnergySyncS2CPacket;
+import com.adamzord.modoluca.recipes.IndustrialCrusherRecipe;
 import com.adamzord.modoluca.screen.IndustrialCrusherMenu;
+import com.adamzord.modoluca.util.ModEnergyStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -19,12 +24,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
+import java.util.Optional;
 
 public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuProvider {
 
@@ -33,9 +42,39 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
         protected void onContentsChanged(int slot) {
             setChanged();
         }
+
+        @Override
+        public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+            return switch(slot){
+                case 0 -> stack.getItem() == ModItems.COFFEE_POWDER.get();
+                case 1 -> stack.getItem() == ModItems.STEEL.get();
+                case 2 -> false;
+                default -> super.isItemValid(slot, stack);
+            };
+        }
     };
 
+    private final ModEnergyStorage ENERGY_STORAGE = new ModEnergyStorage(60000, 256) {
+        @Override
+        public void onEnergyChanged() {
+            setChanged();
+            ModMessages.sendToClients(new EnergySyncS2CPacket(this.energy, getBlockPos()));
+        }
+    };
+    private static final int ENERGY_REQ = 32;
+
     private LazyOptional<IItemHandler> lazyItemHandler = LazyOptional.empty();
+    private final Map<Direction, LazyOptional<WrappedHandler>> directionWrappedHandlerMap =
+            Map.of(Direction.DOWN, LazyOptional.of(() -> new WrappedHandler(itemHandler, (i) -> i == 2, (i, s) -> false)),
+                    Direction.NORTH, LazyOptional.of(() -> new WrappedHandler(itemHandler, (index) -> index == 1,
+                            (index, stack) -> itemHandler.isItemValid(1, stack))),
+                    Direction.SOUTH, LazyOptional.of(() -> new WrappedHandler(itemHandler, (i) -> i == 2, (i, s) -> false)),
+                    Direction.EAST, LazyOptional.of(() -> new WrappedHandler(itemHandler, (i) -> i == 1,
+                            (index, stack) -> itemHandler.isItemValid(1, stack))),
+                    Direction.WEST, LazyOptional.of(() -> new WrappedHandler(itemHandler, (index) -> index == 0 || index == 1,
+                            (index, stack) -> itemHandler.isItemValid(0, stack) || itemHandler.isItemValid(1, stack))));
+
+    private LazyOptional<IEnergyStorage> lazyEnergyHandler = LazyOptional.empty();
 
     protected final ContainerData data;
     private int progress = 0;
@@ -79,10 +118,39 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
         return new IndustrialCrusherMenu(id, inventory, this, this.data);
     }
 
+    public IEnergyStorage getEnergyStorage() {
+        return ENERGY_STORAGE;
+    }
+
+    public void setEnergyLevel(int energy) {
+        this.ENERGY_STORAGE.setEnergy(energy);
+    }
+
     @Override
     public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if(cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY){
-            return lazyItemHandler.cast();
+        if(cap == ForgeCapabilities.ENERGY){
+            return lazyEnergyHandler.cast();
+        }
+
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            if(side == null) {
+                return lazyItemHandler.cast();
+            }
+
+            if(directionWrappedHandlerMap.containsKey(side)) {
+                Direction localDir = this.getBlockState().getValue(IndustrialCrusherBlock.FACING);
+
+                if(side == Direction.UP || side == Direction.DOWN) {
+                    return directionWrappedHandlerMap.get(side).cast();
+                }
+
+                return switch (localDir) {
+                    default -> directionWrappedHandlerMap.get(side.getOpposite()).cast();
+                    case EAST -> directionWrappedHandlerMap.get(side.getClockWise()).cast();
+                    case SOUTH -> directionWrappedHandlerMap.get(side).cast();
+                    case WEST -> directionWrappedHandlerMap.get(side.getCounterClockWise()).cast();
+                };
+            }
         }
 
         return super.getCapability(cap, side);
@@ -92,18 +160,21 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
     public void onLoad() {
         super.onLoad();
         lazyItemHandler = LazyOptional.of(() -> itemHandler);
+        lazyEnergyHandler = LazyOptional.of(() -> ENERGY_STORAGE);
     }
 
     @Override
     public void invalidateCaps() {
         super.invalidateCaps();
         lazyItemHandler.invalidate();
+        lazyEnergyHandler.invalidate();
     }
 
     @Override
     protected void saveAdditional(CompoundTag nbt) {
         nbt.put("inventory", itemHandler.serializeNBT());
         nbt.putInt("industrial_crusher.progress", this.progress);
+        nbt.putInt("industrial_crusher.energy", ENERGY_STORAGE.getEnergyStored());
 
         super.saveAdditional(nbt);
     }
@@ -113,6 +184,7 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
         super.load(nbt);
         itemHandler.deserializeNBT(nbt.getCompound("inventory"));
         progress = nbt.getInt("industrial_crusher.progress");
+        ENERGY_STORAGE.setEnergy(nbt.getInt("industrial_crusher.energy"));
     }
 
     public void drops() {
@@ -130,8 +202,13 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
             return;
         }
 
-        if(hasRecipe(pEntity)){
+        if(hasCoffeeInFirstSlot(pEntity)){
+            pEntity.ENERGY_STORAGE.receiveEnergy(64,false);
+        }
+
+        if(hasRecipe(pEntity) && hasEnoughEnergy(pEntity)){
             pEntity.progress++;
+            extractEnergy(pEntity);
             setChanged(level, pos, state);
         }
 
@@ -143,30 +220,48 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
         }
     }
 
+    private static void extractEnergy(IndustrialCrusherBlockEntity pEntity) {
+        pEntity.ENERGY_STORAGE.extractEnergy(ENERGY_REQ, false);
+    }
+
+    private static boolean hasEnoughEnergy(IndustrialCrusherBlockEntity pEntity) {
+        return pEntity.ENERGY_STORAGE.getEnergyStored() >= ENERGY_REQ * pEntity.maxProgress;
+    }
+
+    private static boolean hasCoffeeInFirstSlot(IndustrialCrusherBlockEntity pEntity) {
+        return pEntity.itemHandler.getStackInSlot(0).getItem() == ModItems.COFFEE_POWDER.get();
+    }
+
     private void resetProgress() {
         this.progress = 0;
     }
 
     private static void craftItem(IndustrialCrusherBlockEntity pEntity) {
-        if(hasRecipe(pEntity)){
-            pEntity.itemHandler.extractItem(1,1,false);
-            pEntity.itemHandler.setStackInSlot(2, new ItemStack(ModItems.STEEL_DUST.get(),
+        Level level = pEntity.level;
+        SimpleContainer inventory = new SimpleContainer(pEntity.itemHandler.getSlots());
+        for (int i = 0; i < pEntity.itemHandler.getSlots(); i++) {
+            inventory.setItem(i, pEntity.itemHandler.getStackInSlot(i));
+        }
+        Optional<IndustrialCrusherRecipe> recipe = level.getRecipeManager()
+                .getRecipeFor(IndustrialCrusherRecipe.Type.INSTANCE, inventory, level);
+        if(hasRecipe(pEntity)) {
+            pEntity.itemHandler.extractItem(1, 1, false);
+            pEntity.itemHandler.setStackInSlot(2, new ItemStack(recipe.get().getResultItem().getItem(),
                     pEntity.itemHandler.getStackInSlot(2).getCount() + 1));
-
             pEntity.resetProgress();
         }
     }
 
     private static boolean hasRecipe(IndustrialCrusherBlockEntity entity) {
+        Level level = entity.level;
         SimpleContainer inventory = new SimpleContainer(entity.itemHandler.getSlots());
         for (int i = 0; i < entity.itemHandler.getSlots(); i++) {
             inventory.setItem(i, entity.itemHandler.getStackInSlot(i));
-    }
-
-        boolean hasMetalInFirstSlot = entity.itemHandler.getStackInSlot(1).getItem() == ModItems.STEEL.get();
-
-        return hasMetalInFirstSlot && canInsertAmountIntoOutputSlot(inventory) &&
-                canInsertItemIntoOutputSlot(inventory, new ItemStack(ModItems.STEEL_DUST.get(), 1));
+        }
+        Optional<IndustrialCrusherRecipe> recipe = level.getRecipeManager()
+                .getRecipeFor(IndustrialCrusherRecipe.Type.INSTANCE, inventory, level);
+        return recipe.isPresent() && canInsertAmountIntoOutputSlot(inventory) &&
+                canInsertItemIntoOutputSlot(inventory, recipe.get().getResultItem());
 }
 
     private static boolean canInsertItemIntoOutputSlot(SimpleContainer inventory, ItemStack itemStack) {
@@ -176,4 +271,5 @@ public class IndustrialCrusherBlockEntity extends BlockEntity implements MenuPro
     private static boolean canInsertAmountIntoOutputSlot(SimpleContainer inventory) {
         return inventory.getItem(2).getMaxStackSize() > inventory.getItem(2).getCount();
     }
-    }
+
+}

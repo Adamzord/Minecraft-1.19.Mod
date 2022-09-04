@@ -1,0 +1,11 @@
+{
+  "type": "modoluca:pulverizing",
+  "ingredients": [
+    {
+      "item": "modoluca:steel"
+    }
+  ],
+  "output": {
+    "item": "modoluca:steel_dust"
+  }
+}
